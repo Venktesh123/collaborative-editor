@@ -1,0 +1,153 @@
+/* src/app/globals.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─────────────────────────────────────────────
+   DESIGN TOKENS
+   Palette: near-black base, indigo accent, amber highlight
+   Type: Inter (UI) + JetBrains Mono (code/metadata)
+───────────────────────────────────────────── */
+
+:root {
+  --color-base:       #0a0a0f;   /* deep near-black */
+  --color-surface:    #111118;   /* elevated surface */
+  --color-surface-2:  #1a1a24;   /* card / panel */
+  --color-border:     #2a2a3a;   /* subtle border */
+  --color-accent:     #6366f1;   /* indigo-500 */
+  --color-accent-dim: #4338ca;   /* indigo-700 */
+  --color-amber:      #f59e0b;   /* amber highlight */
+  --color-text:       #e2e2f0;
+  --color-text-2:     #8888aa;
+  --color-text-3:     #55556a;
+  --color-success:    #22c55e;
+  --color-error:      #ef4444;
+  --color-warning:    #f59e0b;
+
+  /* Editor */
+  --editor-max-width: 780px;
+  --editor-font:      "Inter", system-ui, sans-serif;
+  --editor-line-height: 1.75;
+}
+
+/* ─────────────────────────────────────────────
+   BASE RESET
+───────────────────────────────────────────── */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background-color: var(--color-base);
+  color: var(--color-text);
+  font-family: var(--font-inter, system-ui, sans-serif);
+  min-height: 100vh;
+}
+
+/* ─────────────────────────────────────────────
+   EDITOR STYLES
+   The content-editable area needs careful styling
+   to prevent default browser quirks
+───────────────────────────────────────────── */
+
+.editor-content {
+  font-family: var(--editor-font);
+  font-size: 1.0625rem;         /* 17px — comfortable reading size */
+  line-height: var(--editor-line-height);
+  color: var(--color-text);
+  caret-color: var(--color-accent);
+  outline: none;
+  white-space: pre-wrap;
+  word-break: break-word;
+  min-height: calc(100vh - 200px);
+}
+
+.editor-content:focus {
+  outline: none;
+}
+
+/* Prevent paste from importing rich styles */
+.editor-content * {
+  font-family: inherit !important;
+  font-size: inherit !important;
+  color: inherit !important;
+}
+
+/* AI suggestion ghost text */
+.ai-ghost {
+  color: var(--color-text-3);
+  pointer-events: none;
+}
+
+/* Collaborator cursor */
+.collab-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1.2em;
+  vertical-align: text-bottom;
+  border-radius: 1px;
+  animation: cursor-blink 1.2s ease-in-out infinite;
+  position: relative;
+}
+
+.collab-cursor::before {
+  content: attr(data-name);
+  position: absolute;
+  top: -1.4em;
+  left: 0;
+  font-size: 0.65rem;
+  font-family: var(--font-inter);
+  background: currentColor;
+  color: white;
+  padding: 1px 5px;
+  border-radius: 3px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+@keyframes cursor-blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+
+/* ─────────────────────────────────────────────
+   SCROLLBAR
+───────────────────────────────────────────── */
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--color-text-3); }
+
+/* ─────────────────────────────────────────────
+   FOCUS RINGS (accessibility)
+───────────────────────────────────────────── */
+
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+/* ─────────────────────────────────────────────
+   REDUCED MOTION
+───────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ─────────────────────────────────────────────
+   UTILITIES
+───────────────────────────────────────────── */
+
+.surface { background-color: var(--color-surface); }
+.surface-2 { background-color: var(--color-surface-2); }
+.border-subtle { border-color: var(--color-border); }

@@ -1,0 +1,264 @@
+// prisma/schema.prisma
+// PostgreSQL schema for Collaborative Document Editor
+// Supports: RLS, versioning, CRDT ops, collaborators, audit log
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────
+// AUTH
+// ─────────────────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  passwordHash  String?
+  avatarUrl     String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  ownedDocuments    Document[]       @relation("DocumentOwner")
+  collaborations    Collaborator[]
+  versions          DocumentVersion[]
+  sessions          Session[]
+  auditLogs         AuditLog[]
+
+  @@map("users")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@map("sessions")
+}
+
+// ─────────────────────────────────────────────
+// DOCUMENT CORE
+// ─────────────────────────────────────────────
+
+model Document {
+  id          String   @id @default(cuid())
+  title       String   @default("Untitled Document")
+  
+  // Current document content stored as JSONB for structured ops
+  // Contains: { ops: Operation[], text: string, metadata: {} }
+  content     Json     @default("{\"ops\": [], \"text\": \"\", \"metadata\": {}}")
+  
+  // Lamport clock for ordering distributed operations
+  vectorClock Json     @default("{}")
+  
+  // Last known server revision number
+  revision    Int      @default(0)
+  
+  // Content size in bytes — enforced server-side to prevent OOM
+  contentSize Int      @default(0)
+  
+  isPublic    Boolean  @default(false)
+  isDeleted   Boolean  @default(false)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Owner (always has all permissions)
+  ownerId     String
+  owner       User     @relation("DocumentOwner", fields: [ownerId], references: [id])
+
+  // Relations
+  collaborators Collaborator[]
+  versions      DocumentVersion[]
+  operations    OperationLog[]
+  syncQueue     SyncQueueEntry[]
+  auditLogs     AuditLog[]
+
+  @@index([ownerId])
+  @@index([isDeleted])
+  @@map("documents")
+}
+
+// ─────────────────────────────────────────────
+// COLLABORATION
+// ─────────────────────────────────────────────
+
+enum CollaboratorRole {
+  OWNER
+  EDITOR
+  VIEWER
+}
+
+model Collaborator {
+  id         String           @id @default(cuid())
+  documentId String
+  userId     String
+  role       CollaboratorRole @default(VIEWER)
+  invitedAt  DateTime         @default(now())
+  acceptedAt DateTime?
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId, userId])
+  @@index([userId])
+  @@map("collaborators")
+}
+
+// ─────────────────────────────────────────────
+// OPERATIONAL TRANSFORM / CRDT OPS LOG
+// Immutable append-only log of every operation.
+// Used for: conflict resolution replay, version reconstruction.
+// ─────────────────────────────────────────────
+
+enum OperationType {
+  INSERT
+  DELETE
+  REPLACE
+  FORMAT
+  SNAPSHOT
+}
+
+model OperationLog {
+  id          String        @id @default(cuid())
+  documentId  String
+  
+  // The user who generated this op
+  authorId    String
+  
+  type        OperationType
+  
+  // The actual operation payload (validated via Zod before insert)
+  // Shape: { position: number, content?: string, length?: number, attrs?: {} }
+  payload     Json
+  
+  // Revision this op was based on (for OT rebasing)
+  baseRevision Int
+  
+  // Server-assigned monotonic revision after applying this op
+  revision    Int
+  
+  // Client-generated UUID to enable idempotent resubmission
+  clientOpId  String        @unique
+  
+  createdAt   DateTime      @default(now())
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId, revision])
+  @@index([clientOpId])
+  @@map("operation_logs")
+}
+
+// ─────────────────────────────────────────────
+// VERSION HISTORY (explicit snapshots)
+// ─────────────────────────────────────────────
+
+model DocumentVersion {
+  id          String   @id @default(cuid())
+  documentId  String
+  createdById String
+  
+  // Full content snapshot at this point in time
+  snapshot    Json
+  
+  // Human-readable label (auto or user-set)
+  label       String?
+  
+  // The revision number this snapshot was taken at
+  revision    Int
+  
+  createdAt   DateTime @default(now())
+
+  document  Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  createdBy User     @relation(fields: [createdById], references: [id])
+
+  @@index([documentId, createdAt])
+  @@map("document_versions")
+}
+
+// ─────────────────────────────────────────────
+// OFFLINE SYNC QUEUE
+// Persisted server-side record of batched sync payloads
+// Enables replay and debugging of sync conflicts
+// ─────────────────────────────────────────────
+
+enum SyncStatus {
+  PENDING
+  APPLIED
+  CONFLICT
+  REJECTED
+}
+
+model SyncQueueEntry {
+  id         String     @id @default(cuid())
+  documentId String
+  authorId   String
+  
+  // Batched operations payload
+  payload    Json
+  
+  status     SyncStatus @default(PENDING)
+  
+  // Error details if REJECTED or CONFLICT
+  errorMsg   String?
+  
+  // Size guard: checked before processing
+  payloadSize Int       @default(0)
+  
+  createdAt  DateTime   @default(now())
+  processedAt DateTime?
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId, status])
+  @@map("sync_queue")
+}
+
+// ─────────────────────────────────────────────
+// AUDIT LOG (security & compliance)
+// ─────────────────────────────────────────────
+
+enum AuditAction {
+  DOCUMENT_CREATED
+  DOCUMENT_UPDATED
+  DOCUMENT_DELETED
+  VERSION_CREATED
+  VERSION_RESTORED
+  COLLABORATOR_ADDED
+  COLLABORATOR_REMOVED
+  SYNC_APPLIED
+  SYNC_REJECTED
+  AUTH_LOGIN
+  AUTH_LOGOUT
+}
+
+model AuditLog {
+  id         String      @id @default(cuid())
+  userId     String?
+  documentId String?
+  action     AuditAction
+  metadata   Json        @default("{}")
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime    @default(now())
+
+  user     User?     @relation(fields: [userId], references: [id])
+  document Document? @relation(fields: [documentId], references: [id])
+
+  @@index([userId])
+  @@index([documentId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
