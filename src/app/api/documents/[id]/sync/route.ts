@@ -12,6 +12,41 @@ import type { Operation, VectorClock, DocumentContent } from "@/types/document";
 
 type Params = { params: Promise<{ id: string }> };
 
+// Helper to ensure text is plain text, not HTML encoded
+function ensurePlainText(text: string): string {
+  if (!text) return text;
+  
+  // Decode HTML entities
+  const entities: Record<string, string> = {
+    '&amp;': '&',
+    '&lt;': '<',
+    '&gt;': '>',
+    '&quot;': '"',
+    '&#39;': "'",
+    '&#x2F;': '/',
+    '&#x60;': '`',
+    '&#x3D;': '=',
+    '&apos;': "'",
+  };
+  
+  let decoded = text;
+  for (const [entity, char] of Object.entries(entities)) {
+    decoded = decoded.replace(new RegExp(entity, 'g'), char);
+  }
+  
+  // Decode numeric entities
+  decoded = decoded.replace(/&#(\d+);/g, (_, code) => {
+    return String.fromCharCode(parseInt(code, 10));
+  });
+  
+  // Decode hex entities
+  decoded = decoded.replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => {
+    return String.fromCharCode(parseInt(hex, 16));
+  });
+  
+  return decoded;
+}
+
 export async function POST(req: NextRequest, { params }: Params) {
   // 1. Auth
   const user = await requireAuth().catch(() => null);
@@ -64,7 +99,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   }
 
   try {
-    // 7. Use regular transaction (no FOR UPDATE NOWAIT — not supported on all Render tiers)
+    // 7. Use regular transaction
     const result = await prisma.$transaction(async (tx) => {
       // Fetch current document
       const doc = await tx.document.findUnique({
@@ -83,7 +118,9 @@ export async function POST(req: NextRequest, { params }: Params) {
       const serverRevision = doc.revision;
       const currentDocContent = doc.content as DocumentContent;
       const serverClock = (doc.vectorClock ?? {}) as VectorClock;
-      const currentText = currentDocContent.text ?? "";
+      
+      // CRITICAL: Ensure we get plain text from database
+      const currentText = ensurePlainText(currentDocContent.text ?? "");
 
       // Fetch ops since client's baseRevision
       const serverOpsSince = await tx.operationLog.findMany({
@@ -104,7 +141,10 @@ export async function POST(req: NextRequest, { params }: Params) {
           serverRevision,
           serverClock,
           missingOps: serverOps,
-          fullContent: currentDocContent,
+          fullContent: {
+            ...currentDocContent,
+            text: ensurePlainText(currentDocContent.text ?? ""),
+          },
         };
       }
 
@@ -137,13 +177,16 @@ export async function POST(req: NextRequest, { params }: Params) {
         skipDuplicates: true,
       });
 
-      // Build new content
+      // CRITICAL: Ensure text is plain before storing
+      const plainText = ensurePlainText(newText);
+
+      // Build new content with plain text
       const newContent: DocumentContent = {
         ops: rebasedOps,
-        text: newText,
+        text: plainText,
         metadata: {
-          wordCount: newText.split(/\s+/).filter(Boolean).length,
-          charCount: newText.length,
+          wordCount: plainText.split(/\s+/).filter(Boolean).length,
+          charCount: plainText.length,
           lastEditedBy: user.id,
         },
       };
@@ -152,9 +195,9 @@ export async function POST(req: NextRequest, { params }: Params) {
       await tx.document.update({
         where: { id: documentId },
         data: {
-          content: newContent,
+          content: newContent as any, // Prisma will handle JSON serialization
           revision: newRevision,
-          vectorClock: newClock,
+          vectorClock: newClock as any,
           contentSize: newSize,
           updatedAt: new Date(),
         },
@@ -186,12 +229,18 @@ export async function POST(req: NextRequest, { params }: Params) {
       return NextResponse.json(response);
     }
 
+    // Ensure fullContent has plain text
+    const fullContentResponse = result.fullContent ? {
+      ...result.fullContent,
+      text: ensurePlainText(result.fullContent.text ?? ""),
+    } : undefined;
+
     const response: SyncResponse = {
       ok: true,
       newRevision: result.newRevision,
       missingOps: result.missingOps,
       vectorClock: result.newClock,
-      fullContent: result.fullContent,
+      fullContent: fullContentResponse,
       opResults: clientOps.map((op) => ({
         clientOpId: op.clientOpId,
         status: "APPLIED",
