@@ -291,8 +291,7 @@ async function applyOpsTransaction(
       select: { payload: true },
     });
 
-    const serverOps = serverOpsSince.map((r) => r.payload as Operation);
-
+const serverOps = serverOpsSince.map((r) => r.payload as unknown as Operation);
     // Rebase client ops against server ops (OT transform)
     const rebasedOps = rebaseOps(clientOps, serverOps);
 
