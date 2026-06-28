@@ -7,77 +7,125 @@ interface EditorToolbarProps {
   editorRef: RefObject<HTMLDivElement | null>;
 }
 
-interface ToolbarAction {
-  label: string;
-  icon: string;
-  action: () => void;
-  shortcut?: string;
-}
-
 export function EditorToolbar({ editorRef }: EditorToolbarProps) {
+
+  function focusEditor() {
+    editorRef.current?.focus();
+  }
+
   function insertAtCursor(text: string) {
     const editor = editorRef.current;
     if (!editor) return;
 
-    const sel = window.getSelection();
-    if (!sel?.rangeCount) return;
+    // Must be focused first
+    editor.focus();
 
-    const range = sel.getRangeAt(0);
-    range.deleteContents();
-    range.insertNode(window.document.createTextNode(text));
-    range.collapse(false);
-    sel.removeAllRanges();
-    sel.addRange(range);
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) {
+      // No selection — append at end
+      const existingText = editor.textContent ?? "";
+      editor.textContent = existingText + text;
+      // Move cursor to end
+      const range = window.document.createRange();
+      range.selectNodeContents(editor);
+      range.collapse(false);
+      sel?.removeAllRanges();
+      sel?.addRange(range);
+    } else {
+      const range = sel.getRangeAt(0);
+      // Only insert if selection is inside the editor
+      if (!editor.contains(range.commonAncestorContainer)) {
+        editor.textContent = (editor.textContent ?? "") + text;
+      } else {
+        range.deleteContents();
+        range.insertNode(window.document.createTextNode(text));
+        range.collapse(false);
+        sel.removeAllRanges();
+        sel.addRange(range);
+      }
+    }
 
     // Trigger input event so sync manager picks up the change
     editor.dispatchEvent(new InputEvent("input", { bubbles: true }));
   }
 
   function wrapSelection(before: string, after: string) {
+    const editor = editorRef.current;
+    if (!editor) return;
+    editor.focus();
     const sel = window.getSelection();
-    if (!sel?.rangeCount) return;
-
+    if (!sel || sel.rangeCount === 0) return;
     const selected = sel.toString();
-    insertAtCursor(`${before}${selected}${after}`);
+    if (selected) {
+      insertAtCursor(`${before}${selected}${after}`);
+    } else {
+      insertAtCursor(`${before}${after}`);
+    }
   }
 
-  const actions: ToolbarAction[] = [
+  const actions = [
     {
       label: "Bold",
-      shortcut: "Ctrl+B",
-      icon: "B",
-      action: () => wrapSelection("**", "**"),
+      display: "B",
+      style: { fontWeight: "700" },
+      onClick: (e: React.MouseEvent) => {
+        e.preventDefault();
+        wrapSelection("**", "**");
+      },
     },
     {
       label: "Italic",
-      shortcut: "Ctrl+I",
-      icon: "I",
-      action: () => wrapSelection("_", "_"),
+      display: "I",
+      style: { fontStyle: "italic", fontFamily: "Georgia, serif" },
+      onClick: (e: React.MouseEvent) => {
+        e.preventDefault();
+        wrapSelection("_", "_");
+      },
     },
     {
       label: "Heading",
-      icon: "H₁",
-      action: () => insertAtCursor("\n## "),
+      display: "H₁",
+      style: {},
+      onClick: (e: React.MouseEvent) => {
+        e.preventDefault();
+        insertAtCursor("\n## ");
+      },
     },
     {
       label: "Bullet list",
-      icon: "•—",
-      action: () => insertAtCursor("\n- "),
+      display: "•—",
+      style: {},
+      onClick: (e: React.MouseEvent) => {
+        e.preventDefault();
+        insertAtCursor("\n- ");
+      },
     },
     {
       label: "Numbered list",
-      icon: "1.",
-      action: () => insertAtCursor("\n1. "),
+      display: "1.",
+      style: {},
+      onClick: (e: React.MouseEvent) => {
+        e.preventDefault();
+        insertAtCursor("\n1. ");
+      },
     },
     {
       label: "Code block",
-      icon: "</>",
-      action: () => wrapSelection("\n```\n", "\n```\n"),
+      display: "</>",
+      style: { fontFamily: "monospace" },
+      onClick: (e: React.MouseEvent) => {
+        e.preventDefault();
+        wrapSelection("\n```\n", "\n```\n");
+      },
     },
     {
       label: "Horizontal rule",
-      icon: "———",
-      action: () => insertAtCursor("\n\n---\n\n"),
+      display: "———",
+      style: {},
+      onClick: (e: React.MouseEvent) => {
+        e.preventDefault();
+        insertAtCursor("\n\n---\n\n");
+      },
     },
   ];
 
@@ -94,25 +142,17 @@ export function EditorToolbar({ editorRef }: EditorToolbarProps) {
       {actions.map((action, i) => (
         <button
           key={i}
-          onClick={action.action}
-          title={`${action.label}${action.shortcut ? ` (${action.shortcut})` : ""}`}
+          type="button"
+          onMouseDown={action.onClick}
+          title={action.label}
           aria-label={action.label}
-          className="px-2.5 py-1 rounded text-xs font-medium transition-colors
-            hover:bg-white/5 active:bg-white/10 shrink-0"
+          className="px-2.5 py-1 rounded text-xs font-medium transition-colors hover:bg-white/5 active:bg-white/10 shrink-0"
           style={{
             color: "var(--color-text-2)",
-            fontFamily:
-              action.icon === "</>"
-                ? "var(--font-mono)"
-                : action.icon === "I"
-                ? "Georgia, serif"
-                : "inherit",
-            fontStyle: action.icon === "I" ? "italic" : "normal",
-            fontWeight: action.icon === "B" ? "700" : "500",
-            letterSpacing: action.icon === "B" ? "0.02em" : "normal",
+            ...action.style,
           }}
         >
-          {action.icon}
+          {action.display}
         </button>
       ))}
 
@@ -122,7 +162,6 @@ export function EditorToolbar({ editorRef }: EditorToolbarProps) {
         aria-hidden="true"
       />
 
-      {/* Word count hint */}
       <span
         className="ml-auto text-xs shrink-0"
         style={{ color: "var(--color-text-3)" }}
