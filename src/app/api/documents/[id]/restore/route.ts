@@ -149,7 +149,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       await tx.document.update({
         where: { id: documentId },
         data: {
-          content: newContent,
+          content: newContent as unknown as object,
           revision: newRevision,
           vectorClock: newClock,
           contentSize: newSize,
