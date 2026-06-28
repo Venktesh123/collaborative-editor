@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "tsx server.ts",
     "build": "next build",
-    "start": "NODE_ENV=production tsx server.ts",
+    "start": "tsx server.ts",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
     "db:migrate": "prisma migrate dev",
@@ -13,9 +13,9 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio",
     "db:generate": "prisma generate",
+    "postinstall": "prisma generate",
     "test": "jest",
-    "test:e2e": "playwright test",
-    "test:watch": "jest --watch"
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@ai-sdk/google": "^0.0.52",
@@ -23,9 +23,9 @@
     "@prisma/client": "^5.18.0",
     "ai": "^3.3.40",
     "bcryptjs": "^2.4.3",
-    "eventemitter3": "^5.0.4",
-    "idb": "^8.0.3",
-    "next": "^16.2.9",
+    "eventemitter3": "^5.0.1",
+    "idb": "^8.0.0",
+    "next": "^15.0.0",
     "next-auth": "^5.0.0-beta.22",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
@@ -43,7 +43,6 @@
     "@types/uuid": "^10.0.0",
     "autoprefixer": "^10.4.20",
     "jest": "^29.7.0",
-    "jest-environment-jsdom": "^29.7.0",
     "postcss": "^8.4.47",
     "prisma": "^5.18.0",
     "tailwindcss": "^3.4.10",
