@@ -75,7 +75,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   }
 
   // 5. Validate payload
-  const currentContent = access.doc.content as DocumentContent;
+  const currentContent = access.doc.content as unknown as DocumentContent;
   const currentTextLength = currentContent.text?.length ?? 0;
 
   const validation = validateSyncPayload(rawBody, currentTextLength);
