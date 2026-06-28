@@ -84,6 +84,7 @@ export default function RegisterPage() {
                   field === "email" ? "ada@example.com" : "Min. 8 characters"
                 }
                 minLength={field === "password" ? 8 : undefined}
+                suppressHydrationWarning
               />
             </div>
           ))}

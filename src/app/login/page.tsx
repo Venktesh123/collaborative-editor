@@ -73,6 +73,7 @@ export default function LoginPage() {
                 color: "var(--color-text)",
               }}
               placeholder="you@example.com"
+              suppressHydrationWarning
             />
           </div>
 

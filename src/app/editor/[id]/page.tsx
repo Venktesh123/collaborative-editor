@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth";
 import { redirect, notFound } from "next/navigation";
 import { getDocumentForUser } from "@/lib/prisma";
 import { CollaborativeEditor } from "@/components/editor/collaborative-editor";
-import type { DocumentDTO } from "@/types/document";
+import type { DocumentDTO, DocumentContent } from "@/types/document";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -21,9 +21,9 @@ export default async function EditorPage({ params }: Params) {
   const documentDTO: DocumentDTO = {
     id: doc.id,
     title: doc.title,
-    content: doc.content as DocumentDTO["content"],
+    content: doc.content as unknown as DocumentContent,
     revision: doc.revision,
-    vectorClock: doc.vectorClock as DocumentDTO["vectorClock"],
+    vectorClock: (doc.vectorClock ?? {}) as Record<string, number>,
     ownerId: doc.ownerId,
     isPublic: doc.isPublic,
     createdAt: doc.createdAt.toISOString(),

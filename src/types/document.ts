@@ -1,33 +1,31 @@
 // src/types/document.ts
-// Core document and operation types shared across frontend and backend
-
-export interface DocumentContent {
-  ops: Operation[];
-  text: string;
-  metadata: DocumentMetadata;
-}
 
 export interface DocumentMetadata {
   wordCount: number;
   charCount: number;
   lastEditedBy?: string;
+  [key: string]: unknown;
 }
 
-// ─────────────────────────────────────────────
-// OPERATION TRANSFORM TYPES
-// ─────────────────────────────────────────────
+export interface DocumentContent {
+  ops: Operation[];
+  text: string;
+  metadata: DocumentMetadata;
+  [key: string]: unknown;  // Allows Prisma JsonValue assignment
+}
+
+// ── OPERATION TYPES ──────────────────────────────────────────────
 
 export type OperationType = "INSERT" | "DELETE" | "REPLACE" | "FORMAT";
 
 export interface BaseOperation {
   type: OperationType;
   position: number;
-  // Client-generated UUID for idempotency
   clientOpId: string;
-  // Revision the client was at when this op was created
   baseRevision: number;
   authorId: string;
   timestamp: number;
+  [key: string]: unknown;  // Allows Prisma JsonValue assignment
 }
 
 export interface InsertOperation extends BaseOperation {
@@ -58,11 +56,8 @@ export type Operation =
   | ReplaceOperation
   | FormatOperation;
 
-// ─────────────────────────────────────────────
-// VECTOR CLOCK
-// ─────────────────────────────────────────────
+// ── VECTOR CLOCK ─────────────────────────────────────────────────
 
-// Maps userId -> logical clock value
 export type VectorClock = Record<string, number>;
 
 export function incrementClock(clock: VectorClock, userId: string): VectorClock {
@@ -77,7 +72,6 @@ export function mergeClock(a: VectorClock, b: VectorClock): VectorClock {
   return merged;
 }
 
-// Returns true if a happened-before b
 export function happenedBefore(a: VectorClock, b: VectorClock): boolean {
   const allKeys = new Set([...Object.keys(a), ...Object.keys(b)]);
   let atLeastOneLess = false;
@@ -90,9 +84,7 @@ export function happenedBefore(a: VectorClock, b: VectorClock): boolean {
   return atLeastOneLess;
 }
 
-// ─────────────────────────────────────────────
-// DOCUMENT DTO (what the API returns)
-// ─────────────────────────────────────────────
+// ── DTOs ─────────────────────────────────────────────────────────
 
 export interface DocumentDTO {
   id: string;
