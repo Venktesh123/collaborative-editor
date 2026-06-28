@@ -99,7 +99,7 @@ export async function POST(req: NextRequest, { params }: Params) {
 
       // Step 2: Compute the restore as a single REPLACE operation
       // This goes through the OT log so collaborators can rebase against it
-      const restoredContent = targetVersion.snapshot as DocumentContent;
+      const restoredContent = targetVersion.snapshot as unknown as DocumentContent;
       const restoredText = restoredContent.text ?? "";
       const newRevision = serverRevision + 1;
 

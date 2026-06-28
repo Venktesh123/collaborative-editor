@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
   const access = await getDocumentForUser(documentId, user.id);
   if (!access) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const content = access.doc.content as DocumentContent;
+  const content = access.doc.content as unknown as DocumentContent;
   const text = content.text ?? "";
 
   if (text.trim().length < 50) {
