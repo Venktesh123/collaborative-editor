@@ -18,7 +18,7 @@ A **Local-First, Real-Time Collaborative Document Editor** with Offline Sync, Op
 | AI | Vercel AI SDK + Google Gemini | Streaming suggestions, structured outputs |
 | Styling | Tailwind CSS + shadcn/ui | Accessible component library |
 | Testing | Jest + Playwright | Unit (OT engine) + E2E (sync flows) |
-| Deployment | Vercel + GitHub Actions | CI/CD, preview deployments |
+| Deployment | EC2 + GitHub Actions | CI/CD, preview deployments |
 
 ---
 
@@ -144,11 +144,7 @@ collaborative-editor/
 
 ```typescript
 // 1. Raw byte size check BEFORE JSON.parse
-const byteSize = Buffer.byteLength(rawBody, "utf-8");
-if (byteSize > 512 * 1024) return 413; // Never reaches JSON.parse
 
-// 2. Zod schema — structural validation
-const result = SyncPayloadSchema.safeParse(parsed);
 
 // 3. Semantic validation — position bounds, duplicate IDs
 // 4. Document size guard — prevents unbounded growth
@@ -281,4 +277,4 @@ npm run db:migrate:prod
 
 ---
 
-*Built for House of Edtech Fullstack Assignment 2 (v2.1, April 2026)*
+Built for House of Edtech Fullstack 
