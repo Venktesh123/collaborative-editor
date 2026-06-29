@@ -1,26 +1,15 @@
-// src/app/layout.tsx
+// WRONG — remove this if present
+import { Html, Head, Main, NextScript } from "next/document";
+
+// CORRECT — layout.tsx should look like this
 import type { Metadata } from "next";
-import { Inter, JetBrains_Mono } from "next/font/google";
-import { SessionProvider } from "next-auth/react";
-import "./globals.css";
+import { Inter } from "next/font/google";
 
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-  display: "swap",
-});
-
-const jetbrainsMono = JetBrains_Mono({
-  subsets: ["latin"],
-  variable: "--font-mono",
-  display: "swap",
-});
+const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Collabdoc — Collaborative Document Editor",
-  description:
-    "Real-time collaborative editing with offline sync and version history",
-  keywords: ["collaborative", "document", "editor", "offline", "real-time"],
+  title: "Collabdoc",
+  description: "Collaborative Document Editor",
 };
 
 export default function RootLayout({
@@ -29,10 +18,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable}`}>
-      <body className="bg-neutral-950 text-neutral-100 antialiased font-sans">
-        <SessionProvider>{children}</SessionProvider>
-      </body>
+    <html lang="en">
+      <body className={inter.className}>{children}</body>
     </html>
   );
 }
