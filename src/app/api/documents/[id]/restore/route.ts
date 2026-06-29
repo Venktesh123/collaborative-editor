@@ -81,7 +81,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       if (!locked[0]) throw new Error("Document not found");
 
       const current = locked[0];
-      const currentContent = current.content as DocumentContent;
+      const currentContent = current.content as unknown as DocumentContent;
       const currentText = currentContent.text ?? "";
       const serverRevision = current.revision;
       const serverClock = (current.vector_clock ?? {}) as VectorClock;

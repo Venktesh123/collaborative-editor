@@ -24,22 +24,17 @@ export function PresenceAvatars({ presence, currentUserId }: PresenceAvatarsProp
   const overflow = others.length - visible.length;
 
   return (
-    <div
-      className="flex items-center"
-      aria-label={`${others.length} other ${others.length === 1 ? "person" : "people"} editing`}
-    >
+    <div className="flex items-center" aria-label={`${others.length} other ${others.length === 1 ? "person" : "people"} editing`}>
       <div className="flex -space-x-2">
         {visible.map((user) => (
           <div
             key={user.userId}
             title={user.name}
-            className="w-7 h-7 rounded-full flex items-center justify-center text-xs
-              font-semibold ring-2 shrink-0 select-none"
+            className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 select-none"
             style={{
               background: user.color + "33",
               color: user.color,
-              ringColor: "var(--color-base)",
-              border: `2px solid var(--color-base)`,
+              border: "2px solid var(--color-base)",
             }}
             aria-hidden="true"
           >
@@ -48,13 +43,8 @@ export function PresenceAvatars({ presence, currentUserId }: PresenceAvatarsProp
         ))}
         {overflow > 0 && (
           <div
-            className="w-7 h-7 rounded-full flex items-center justify-center text-xs
-              font-semibold ring-2 shrink-0"
-            style={{
-              background: "var(--color-surface-2)",
-              color: "var(--color-text-2)",
-              border: "2px solid var(--color-base)",
-            }}
+            className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold shrink-0"
+            style={{ background: "var(--color-surface-2)", color: "var(--color-text-2)", border: "2px solid var(--color-base)" }}
             aria-label={`+${overflow} more`}
           >
             +{overflow}

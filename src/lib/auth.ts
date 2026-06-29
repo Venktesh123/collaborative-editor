@@ -1,17 +1,10 @@
 // src/lib/auth.ts
-// NextAuth v5 (Auth.js) configuration
-// JWT-based sessions — no DB sessions table needed for auth itself
-
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { prisma } from "./prisma";
 import type { NextRequest } from "next/server";
-
-// ─────────────────────────────────────────────
-// NEXTAUTH CONFIG
-// ─────────────────────────────────────────────
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
@@ -71,30 +64,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
   session: {
     strategy: "jwt",
-    maxAge: 7 * 24 * 60 * 60, // 7 days
+    maxAge: 7 * 24 * 60 * 60,
   },
 
   secret: process.env.NEXTAUTH_SECRET,
 });
 
-// ─────────────────────────────────────────────
-// AUTH HELPERS for API routes
-// ─────────────────────────────────────────────
+// ── AUTH HELPERS ─────────────────────────────────────────────────
 
-/**
- * Get the authenticated user from a request.
- * Returns null if not authenticated.
- */
-export async function getAuthUser(req?: NextRequest) {
+export async function getAuthUser(_req?: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) return null;
   return session.user as { id: string; email: string; name?: string | null };
 }
 
-/**
- * Assert auth — throws a typed error if not authenticated.
- * Use in API routes.
- */
 export async function requireAuth() {
   const user = await getAuthUser();
   if (!user) {
@@ -113,10 +96,6 @@ export class AuthError extends Error {
   }
 }
 
-// ─────────────────────────────────────────────
-// BCRYPT HELPERS
-// ─────────────────────────────────────────────
-
 export async function hashPassword(password: string): Promise<string> {
   return bcrypt.hash(password, 12);
 }
@@ -128,9 +107,8 @@ export async function verifyPassword(
   return bcrypt.compare(password, hash);
 }
 
-// ─────────────────────────────────────────────
-// TYPE AUGMENTATION
-// ─────────────────────────────────────────────
+// ── TYPE AUGMENTATION ────────────────────────────────────────────
+// Only augment next-auth, not next-auth/jwt (not available in v5 beta)
 
 declare module "next-auth" {
   interface Session {
@@ -140,11 +118,5 @@ declare module "next-auth" {
       name?: string | null;
       image?: string | null;
     };
-  }
-}
-
-declare module "next-auth/jwt" {
-  interface JWT {
-    userId?: string;
   }
 }

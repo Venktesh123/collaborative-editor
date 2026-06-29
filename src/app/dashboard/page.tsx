@@ -26,12 +26,13 @@ export default async function DashboardPage() {
       title: true,
       updatedAt: true,
       ownerId: true,
+      isPublic: true,
       owner: { select: { name: true, email: true } },
       collaborators: {
         where: { userId },
         select: { role: true },
       },
-      _count: { select: { collaborators: true } },
+      _count: { select: { collaborators: true, versions: true } },
     },
     orderBy: { updatedAt: "desc" },
     take: 50,
@@ -39,13 +40,9 @@ export default async function DashboardPage() {
 
   return (
     <div className="min-h-screen" style={{ background: "var(--color-base)" }}>
-      {/* Top nav */}
       <header
         className="sticky top-0 z-10 flex items-center justify-between px-6 py-4 border-b"
-        style={{
-          background: "var(--color-surface)",
-          borderColor: "var(--color-border)",
-        }}
+        style={{ background: "var(--color-surface)", borderColor: "var(--color-border)" }}
       >
         <span className="text-lg font-semibold tracking-tight">
           Collab<span style={{ color: "var(--color-accent)" }}>doc</span>
@@ -58,7 +55,6 @@ export default async function DashboardPage() {
         </div>
       </header>
 
-      {/* Main content */}
       <main className="max-w-4xl mx-auto px-6 py-10">
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-2xl font-semibold">Your documents</h1>
@@ -79,54 +75,45 @@ export default async function DashboardPage() {
         ) : (
           <div className="grid gap-2">
             {documents.map((doc) => {
+              // Fix: compare with Prisma enum values (uppercase)
+              const collabRole = doc.collaborators[0]?.role;
               const role =
                 doc.ownerId === userId
                   ? "Owner"
-                  : (doc.collaborators[0]?.role ?? "Viewer");
+                  : collabRole === "EDITOR"
+                  ? "Editor"
+                  : collabRole === "VIEWER"
+                  ? "Viewer"
+                  : "Viewer";
+
               return (
                 <Link
                   key={doc.id}
                   href={`/editor/${doc.id}`}
                   data-testid="document-item"
                   className="flex items-center justify-between px-5 py-4 rounded-lg transition-colors group"
-                  style={{
-                    background: "var(--color-surface)",
-                    border: "1px solid var(--color-border)",
-                  }}
+                  style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)" }}
                 >
                   <div className="min-w-0">
                     <p className="font-medium truncate group-hover:text-indigo-400 transition-colors">
                       {doc.title}
                     </p>
                     <p className="text-xs mt-0.5" style={{ color: "var(--color-text-2)" }}>
-                      Edited {formatDistanceToNow(doc.updatedAt)} ·{" "}
-                      {doc.owner.name ?? doc.owner.email}
+                      Edited {formatDistanceToNow(doc.updatedAt)} · {doc.owner.name ?? doc.owner.email}
                     </p>
                   </div>
                   <div className="flex items-center gap-3 ml-4 shrink-0">
                     <span
                       className="text-xs px-2 py-0.5 rounded-full font-medium"
                       style={{
-                        background:
-                          role === "Owner"
-                            ? "#1e1b4b"
-                            : role === "Editor"
-                            ? "#14291f"
-                            : "#1f1f1f",
-                        color:
-                          role === "Owner"
-                            ? "#a5b4fc"
-                            : role === "Editor"
-                            ? "#4ade80"
-                            : "#888",
+                        background: role === "Owner" ? "#1e1b4b" : role === "Editor" ? "#14291f" : "#1f1f1f",
+                        color: role === "Owner" ? "#a5b4fc" : role === "Editor" ? "#4ade80" : "#888",
                       }}
                     >
                       {role}
                     </span>
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"
-                      style={{ color: "var(--color-text-3)" }}>
-                      <path d="M6 12l4-4-4-4" stroke="currentColor" strokeWidth="1.5"
-                        strokeLinecap="round" strokeLinejoin="round" />
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ color: "var(--color-text-3)" }}>
+                      <path d="M6 12l4-4-4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
                   </div>
                 </Link>

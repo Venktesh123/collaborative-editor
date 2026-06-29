@@ -116,7 +116,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       if (!doc) throw new Error("Document not found");
 
       const serverRevision = doc.revision;
-      const currentDocContent = doc.content as DocumentContent;
+      const currentDocContent = doc.content as unknown as DocumentContent;
       const serverClock = (doc.vectorClock ?? {}) as VectorClock;
       
       // CRITICAL: Ensure we get plain text from database
@@ -128,8 +128,7 @@ export async function POST(req: NextRequest, { params }: Params) {
         orderBy: { revision: "asc" },
         select: { payload: true, clientOpId: true },
       });
-
-      const serverOps = serverOpsSince.map((r) => r.payload as Operation);
+const serverOps = serverOpsSince.map((r) => r.payload as unknown as Operation);
       const existingIds = new Set(serverOpsSince.map((r) => r.clientOpId));
 
       // Deduplicate

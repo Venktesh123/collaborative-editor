@@ -1,6 +1,4 @@
 // src/lib/prisma.ts
-// Singleton Prisma client — prevents connection pool exhaustion during hot reload
-
 import { PrismaClient } from "@prisma/client";
 
 const globalForPrisma = globalThis as unknown as {
@@ -10,40 +8,21 @@ const globalForPrisma = globalThis as unknown as {
 export const prisma =
   globalForPrisma.prisma ??
   new PrismaClient({
-    log:
-      process.env.NODE_ENV === "development"
-        ? ["query", "error", "warn"]
-        : ["error"],
+    log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
   });
 
 if (process.env.NODE_ENV !== "production") {
   globalForPrisma.prisma = prisma;
 }
 
-// ─────────────────────────────────────────────
-// HELPER: scoped query to enforce tenant isolation
-// Always filters by userId — never trust the documentId alone
-// ─────────────────────────────────────────────
-
-/**
- * Returns a document only if the requesting user is an owner or collaborator.
- * This is the RLS equivalent at the ORM layer.
- */
-export async function getDocumentForUser(
-  documentId: string,
-  userId: string
-) {
+export async function getDocumentForUser(documentId: string, userId: string) {
   const doc = await prisma.document.findFirst({
     where: {
       id: documentId,
       isDeleted: false,
       OR: [
         { ownerId: userId },
-        {
-          collaborators: {
-            some: { userId },
-          },
-        },
+        { collaborators: { some: { userId } } },
       ],
     },
     include: {
@@ -59,14 +38,11 @@ export async function getDocumentForUser(
   const role =
     doc.ownerId === userId
       ? ("OWNER" as const)
-      : (doc.collaborators[0]?.role ?? null);
+      : (doc.collaborators[0]?.role as "EDITOR" | "VIEWER" | undefined) ?? null;
 
   return { doc, role };
 }
 
-/**
- * Audit log helper — fire-and-forget (non-blocking)
- */
 export async function writeAuditLog(data: {
   userId?: string;
   documentId?: string;
@@ -75,14 +51,13 @@ export async function writeAuditLog(data: {
   ipAddress?: string;
   userAgent?: string;
 }) {
-  // Non-critical, swallow errors
   prisma.auditLog
     .create({
       data: {
         userId: data.userId,
         documentId: data.documentId,
         action: data.action,
-        metadata: data.metadata ?? {},
+        metadata: (data.metadata ?? {}) as object,
         ipAddress: data.ipAddress,
         userAgent: data.userAgent,
       },
